@@ -260,7 +260,19 @@ MppFrame put_yuv_data_to_mpp_buffer(mpp_encoder_t* encoder, void* yuv_data,
     MppBufferInfo info;
 
     printf("开始将YUV数据放入MPP Buffer...\n");
+    ret=mpp_create(&encoder->ctx, &encoder->mpi);
+    if(ret){
+        printf("上下文、MPI创建失败\n");
+    } else{
+        printf("上下文、MPI创建成功！\n");
+    }
 
+    ret=mpp_init(encoder->ctx,MPP_CTX_ENC,MPP_VIDEO_CodingMJPEG);
+    if(ret){
+        printf("MPP初始化失败\n");
+    } else{
+        printf("MPP初始化成功！\n");
+    }
     // 1. 创建MPP帧
     ret = mpp_frame_init(&frame);
     if (ret != MPP_OK) {
@@ -277,11 +289,18 @@ MppFrame put_yuv_data_to_mpp_buffer(mpp_encoder_t* encoder, void* yuv_data,
     //MppMeta meta = mpp_frame_get_meta(frame);//放进encode函数中
     // 3. 创建MPP Buffer（INTERNAL模式关键步骤）
     memset(&info, 0, sizeof(info));
-    info.size = yuv_size;
+    info.size = yuv_size+1920*4;
     info.ptr = yuv_data;      // 关键：直接使用摄像头YUV数据指针
     info.fd = -1;             // 不使用文件描述符
-    info.type = MPP_BUFFER_TYPE_ION;  // ION内存类型
+    info.type = MPP_BUFFER_TYPE_NORMAL;  // 普通内存类型
+    //将已得到的yuv缓冲区变成mpp的buffer
     ret=mpp_buffer_import(&buffer,&info);
+    if (ret != MPP_OK || buffer == NULL) {
+        printf("错误: 无法创建MPP Buffer, ret=%d\n", ret);
+        mpp_frame_deinit(&frame);
+        return NULL;
+    }
+
     // 5. 将MPP Buffer附加到MPP帧
     mpp_frame_set_buffer(frame, buffer);
     
@@ -308,7 +327,7 @@ int encode_frame_to_jpeg(mpp_encoder_t* encoder, MppFrame frame, const char* out
     MPP_RET ret = MPP_OK;
     MppPacket packet = NULL;
     FILE* fp = NULL;
-    
+
     printf("开始JPEG编码...\n");
     
     // 1. 将帧送入编码器
