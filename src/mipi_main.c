@@ -46,7 +46,7 @@ int camera_init(camera_t* cam, const char* device, int width, int height, uint32
     if (cam->fd < 0) {
         perror("无法打开摄像头设备");
         return -1;
-    }
+    } 
     
     // 2. 查询设备能力
     if (ioctl(cam->fd, VIDIOC_QUERYCAP, &cap) < 0) {
@@ -151,7 +151,6 @@ int camera_init(camera_t* cam, const char* device, int width, int height, uint32
     printf("摄像头初始化成功\n");
     return 0;
 }
-
 /**
  * @brief 开始摄像头采集
  * @param cam 摄像头结构体指针
@@ -259,16 +258,15 @@ MppFrame put_yuv_data_to_mpp_buffer(mpp_encoder_t* encoder, void* yuv_data,
     MppFrame frame = NULL;
     MppBuffer buffer = NULL;
     MppBufferInfo info;
-    
+
     printf("开始将YUV数据放入MPP Buffer...\n");
-    
+
     // 1. 创建MPP帧
     ret = mpp_frame_init(&frame);
     if (ret != MPP_OK) {
         printf("错误: 无法初始化MPP帧, ret=%d\n", ret);
         return NULL;
     }
-    
     // 2. 设置MPP帧参数
     mpp_frame_set_width(frame, width);
     mpp_frame_set_height(frame, height);
@@ -276,22 +274,14 @@ MppFrame put_yuv_data_to_mpp_buffer(mpp_encoder_t* encoder, void* yuv_data,
     mpp_frame_set_ver_stride(frame, height);   // 垂直 stride
     mpp_frame_set_fmt(frame, format);         // YUV格式
     mpp_frame_set_eos(frame, 1);              // 结束帧标记
-    
+    //MppMeta meta = mpp_frame_get_meta(frame);//放进encode函数中
     // 3. 创建MPP Buffer（INTERNAL模式关键步骤）
     memset(&info, 0, sizeof(info));
     info.size = yuv_size;
     info.ptr = yuv_data;      // 关键：直接使用摄像头YUV数据指针
     info.fd = -1;             // 不使用文件描述符
-    info.type = MPP_BUFFER_TYPE_NORMAL;  // 普通内存类型
-    
-    // 4. 使用内部缓冲区模式创建MPP Buffer
-    ret = mpp_buffer_create(NULL, NULL, &info, &buffer);
-    if (ret != MPP_OK || buffer == NULL) {
-        printf("错误: 无法创建MPP Buffer, ret=%d\n", ret);
-        mpp_frame_deinit(&frame);
-        return NULL;
-    }
-    
+    info.type = MPP_BUFFER_TYPE_ION;  // ION内存类型
+    ret=mpp_buffer_import(&buffer,&info);
     // 5. 将MPP Buffer附加到MPP帧
     mpp_frame_set_buffer(frame, buffer);
     
@@ -307,7 +297,6 @@ MppFrame put_yuv_data_to_mpp_buffer(mpp_encoder_t* encoder, void* yuv_data,
     
     return frame;
 }
-
 /**
  * @brief 使用MPP编码器编码YUV帧为JPEG
  * @param encoder MPP编码器指针
