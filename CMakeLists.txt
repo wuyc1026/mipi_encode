@@ -23,7 +23,8 @@ project(mipi_mpp C)
 set(TARGET "mipi_text")
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/mipi_main.c" )
-    set(SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/mipi_main.c)
+    set(SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/mipi_main.c
+                     ${CMAKE_CURRENT_SOURCE_DIR}/lib/camera_init.c)
 else()
     message(FATAL_ERROR "mipi_main.c not found in ${CMAKE_CURRENT_SOURCE_DIR}")
 endif()
